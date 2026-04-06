@@ -1,3 +1,12 @@
+---
+title: Medical PA Environment
+emoji: 🏥
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 8000
+---
+
 # Medical Prior Authorization Environment
 
 A realistic OpenEnv environment simulating insurance prior authorization (PA) review — one of the most expensive administrative processes in US healthcare ($50B+ annual burden). An AI agent reviews medical procedure requests against clinical guidelines and makes coverage decisions.
