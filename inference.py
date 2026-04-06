@@ -256,7 +256,17 @@ async def run_task(client: OpenAI, env: MedicalPAEnv, task_id: str) -> float:
 
 async def main() -> None:
     client = OpenAI(base_url=API_BASE_URL, api_key=HF_TOKEN)
-    env = await MedicalPAEnv.from_docker_image(LOCAL_IMAGE_NAME)
+
+    # Try Docker image first; fall back to localhost if unavailable
+    env = None
+    if LOCAL_IMAGE_NAME:
+        try:
+            env = await MedicalPAEnv.from_docker_image(LOCAL_IMAGE_NAME)
+        except Exception as exc:
+            print(f"[DEBUG] from_docker_image failed ({exc}), falling back to localhost", flush=True)
+    if env is None:
+        env = MedicalPAEnv(base_url=os.getenv("ENV_BASE_URL", "http://localhost:8000"))
+        await env.connect()
 
     try:
         scores = {}
