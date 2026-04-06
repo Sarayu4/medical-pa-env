@@ -5,10 +5,11 @@ Defines the action and observation spaces for an AI agent performing
 insurance prior authorization review of medical procedures.
 """
 
+import json
 from typing import Any, Dict, List, Literal, Optional
 
 from openenv.core.env_server.types import Action, Observation
-from pydantic import Field
+from pydantic import Field, field_validator
 
 
 class MedicalPAAction(Action):
@@ -48,6 +49,20 @@ class MedicalPAAction(Action):
         default=None,
         description="Agent's rationale for the action. Required for approve/deny.",
     )
+
+    @field_validator("payload", mode="before")
+    @classmethod
+    def parse_payload(cls, v: Any) -> Dict[str, Any]:
+        """Accept payload as either a dict or a JSON string (web UI sends strings)."""
+        if isinstance(v, str):
+            try:
+                parsed = json.loads(v)
+                if isinstance(parsed, dict):
+                    return parsed
+            except (json.JSONDecodeError, ValueError):
+                pass
+            return {}
+        return v if isinstance(v, dict) else {}
 
 
 class MedicalPAObservation(Observation):
