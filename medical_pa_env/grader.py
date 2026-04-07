@@ -13,7 +13,14 @@ from typing import Any, Dict, List, Optional, Tuple
 
 
 def _normalize(val: float, lo: float = 0.0, hi: float = 1.0) -> float:
-    return max(lo, min(hi, val))
+    """Clamp value and ensure score is strictly within (0, 1) — never exactly 0.0 or 1.0."""
+    clamped = max(lo, min(hi, val))
+    # Validator requires 0 < score < 1 (strict inequality)
+    if clamped <= 0.0:
+        return 0.01
+    if clamped >= 1.0:
+        return 0.99
+    return clamped
 
 
 def _check_rationale_references(
@@ -99,7 +106,7 @@ def grade_easy(
     if terminal_action is None:
         feedback_parts.append("No terminal decision (approve/deny) was made.")
         return {
-            "score": 0.0,
+            "score": 0.01,
             "breakdown": breakdown,
             "feedback": " ".join(feedback_parts),
         }
@@ -389,7 +396,7 @@ def grade_hard(
     if terminal_action is None:
         feedback_parts.append("No terminal decision was made.")
         return {
-            "score": 0.0,
+            "score": 0.01,
             "breakdown": breakdown,
             "feedback": " ".join(feedback_parts),
         }
