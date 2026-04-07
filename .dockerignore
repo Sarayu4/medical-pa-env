@@ -1,10 +1,7 @@
-.venv/
 __pycache__/
 *.pyc
+.venv/
+*.egg-info/
 .git/
 .gitignore
-test_*.py
-inspect_*.py
-check_*.py
-*.egg-info/
-.pytest_cache/
+uv.lock

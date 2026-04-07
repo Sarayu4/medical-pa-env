@@ -1,6 +1,16 @@
 spec_version: 1
-name: medical_pa_env
+name: med_pa
 type: space
 runtime: fastapi
-app: medical_pa_env.server.app:app
+app: server.app:app
 port: 8000
+tasks:
+  - easy_knee_mri
+  - easy_chest_xray
+  - easy_pt_eval
+  - medium_humira
+  - medium_ozempic
+  - medium_sleep_study
+  - hard_spinal_fusion
+  - hard_cardiac_cath
+  - hard_gene_therapy
