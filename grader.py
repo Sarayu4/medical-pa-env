@@ -113,20 +113,22 @@ def grade_easy(
         }
 
     # Decision correctness (0.4)
-    if terminal_action["action_type"] == ground_truth["correct_decision"]:
+    correct_decision = ground_truth.get("correct_decision", ground_truth.get("decision", "approve"))
+    if terminal_action["action_type"] == correct_decision:
         breakdown["decision_correctness"] = 0.4
         feedback_parts.append("Correct decision: approved.")
     else:
         feedback_parts.append(
-            f"Wrong decision: {terminal_action['action_type']} instead of {ground_truth['correct_decision']}."
+            f"Wrong decision: {terminal_action['action_type']} instead of {correct_decision}."
         )
 
     # Rationale quality (0.25) — strict
     rationale = terminal_action.get("rationale", "")
+    applicable_gl = ground_truth.get("applicable_guideline") or (ground_truth.get("required_criteria", [""])[0])
     rationale_score = _check_rationale_references(
         rationale,
         ground_truth["key_findings"],
-        ground_truth["applicable_guideline"],
+        applicable_gl,
     )
     breakdown["rationale_quality"] = round(0.25 * rationale_score, 4)
     if rationale_score >= 0.7:
@@ -168,7 +170,7 @@ def grade_easy(
     # Hallucinated guideline penalty — check for any GL- reference that isn't the correct one
     rationale_str = (terminal_action.get("rationale", "") or "").upper()
     gl_refs = re.findall(r"GL-[A-Z]+-\d+", rationale_str)
-    correct_gl = ground_truth["applicable_guideline"].upper()
+    correct_gl = (ground_truth.get("applicable_guideline") or (ground_truth.get("required_criteria", [""])[0])).upper()
     for ref in gl_refs:
         if ref != correct_gl:
             breakdown["penalties"] -= 0.3
@@ -237,7 +239,7 @@ def grade_medium(
             break
 
     # Info request quality (0.3) — core of this task
-    required_missing = set(ground_truth["missing_fields"])
+    required_missing = set(ground_truth.get("missing_fields", ground_truth.get("required_missing_fields", [])))
     if info_requested:
         requested_set = set(requested_fields)
         correct_fields = required_missing & requested_set
@@ -288,10 +290,11 @@ def grade_medium(
     # Rationale quality (0.2) — strict
     if terminal_action:
         rationale = terminal_action.get("rationale", "")
+        applicable_gl_m = ground_truth.get("applicable_guideline") or (ground_truth.get("required_criteria", [""])[0])
         rationale_score = _check_rationale_references(
             rationale,
             ground_truth["key_findings"],
-            ground_truth["applicable_guideline"],
+            applicable_gl_m,
         )
         breakdown["rationale_quality"] = round(0.2 * rationale_score, 4)
         if rationale_score >= 0.5:
@@ -402,7 +405,8 @@ def grade_hard(
         }
 
     # Decision correctness (0.15)
-    if terminal_action["action_type"] == ground_truth["correct_decision"]:
+    correct_decision_h = ground_truth.get("correct_decision", ground_truth.get("decision", "deny"))
+    if terminal_action["action_type"] == correct_decision_h:
         breakdown["decision_correctness"] = 0.15
         feedback_parts.append("Correct decision: denied.")
     else:
@@ -441,8 +445,12 @@ def grade_hard(
         feedback_parts.append("FAILED to identify the key contraindication (HbA1c 8.4% exceeds 8.0% surgical threshold).")
 
     # Guideline conflict resolution (0.15)
-    correct_gl = ground_truth["applicable_guideline"].lower()
-    conflicting_gl = ground_truth.get("conflicting_guideline", "").lower()
+    correct_gl = (ground_truth.get("applicable_guideline") or (ground_truth.get("required_criteria", [""])[0])).lower()
+    _cg = ground_truth.get("conflicting_guideline", "")
+    if isinstance(_cg, dict):
+        conflicting_gl = _cg.get("secondary", _cg.get("conflicting", "")).lower()
+    else:
+        conflicting_gl = (_cg or "").lower()
 
     mentions_correct = correct_gl in combined_text
     mentions_conflicting = conflicting_gl in combined_text
@@ -470,7 +478,7 @@ def grade_hard(
         denial_payload.get("reason_code", "")
         or denial_payload.get("denial_code", "")
     ).upper()
-    correct_code = ground_truth["correct_denial_code"]
+    correct_code = (ground_truth.get("correct_denial_code") or ground_truth.get("denial_reason_code", "") or "").upper()
     alt_codes = [c.upper() for c in ground_truth.get("alternative_denial_codes", [])]
 
     if agent_denial_code == correct_code:
@@ -489,10 +497,11 @@ def grade_hard(
         feedback_parts.append("No denial code (decision was not deny).")
 
     # Rationale quality (0.15) — strict for hard task
+    applicable_gl_h = ground_truth.get("applicable_guideline") or (ground_truth.get("required_criteria", [""])[0])
     rationale_score = _check_rationale_references(
         terminal_action.get("rationale"),
         ground_truth["key_findings"],
-        ground_truth["applicable_guideline"],
+        applicable_gl_h,
     )
     breakdown["rationale_quality"] = round(0.15 * rationale_score, 4)
     if rationale_score >= 0.6:
@@ -540,8 +549,14 @@ def grade_hard(
 
 GRADERS = {
     "easy_knee_mri": grade_easy,
+    "easy_chest_xray": grade_easy,
+    "easy_pt_eval": grade_easy,
     "medium_humira": grade_medium,
+    "medium_ozempic": grade_medium,
+    "medium_sleep_study": grade_medium,
     "hard_spinal_fusion": grade_hard,
+    "hard_cardiac_cath": grade_hard,
+    "hard_gene_therapy": grade_hard,
 }
 
 
